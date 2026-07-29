@@ -1,0 +1,21 @@
+.env
+.env.*
+vendor/
+
+# Composer and runtime artifacts
+composer.phar
+*.log
+*.cache
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Editor folders
+.vscode/
+.idea/
+
+# Temporary and backup files
+*.tmp
+*.bak
+*.swp
