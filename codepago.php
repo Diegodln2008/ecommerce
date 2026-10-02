@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/security.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -24,8 +25,11 @@ use PHPMailer\PHPMailer\Exception;
 
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/dbcon.php';
+require_once __DIR__ . '/includes/data-protection.php';
 
 if (isset($_POST['delete'])) {
+    requireUserRole([1]);
+    requireValidCsrfToken();
     $registro_id = mysqli_real_escape_string($con, $_POST['delete']);
 
     $query = "DELETE FROM pedidos WHERE id='$registro_id' ";
@@ -43,6 +47,7 @@ if (isset($_POST['delete'])) {
 
 
 if (isset($_POST['update'])) {
+    requireValidCsrfToken();
 
     if (!isset($_POST['identificador']) || empty($_POST['identificador'])) {
         die('Identificador no recibido');
@@ -78,6 +83,8 @@ if (isset($_POST['update'])) {
     if (!$stmt->fetch()) {
         die('Pedido no encontrado');
     }
+
+    $telefono = decryptPersonalData($telefono);
 
 
     $pedido = [
@@ -334,14 +341,16 @@ function notifyCustomer($identificador, $email, $bank, $clabe, $convenio, $refer
 {
     $mail = new PHPMailer(true);
     $mail->isSMTP();
-    $mail->Host = 'mail.dominio.mx';
-    $mail->Port = 465;
+    $mail->Host = $_ENV['SMTP_HOST'] ?? '';
+    $mail->Port = (int)($_ENV['SMTP_PORT'] ?? 587);
     $mail->SMTPAuth = true;
-    $mail->Username = 'no-reply@dominio.mx';
-    $mail->Password = '=@dH6mqA5H7%MEa,';
-    $mail->SMTPSecure = 'ssl';
+    $mail->Username = $_ENV['EMAIL_SMTP'] ?? '';
+    $mail->Password = $_ENV['PASSWORD_SMTP'] ?? '';
+    $mail->SMTPSecure = $mail->Port === 465 ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
 
-    $mail->setFrom('no-reply@dominio.mx', 'MI EMPRESA');
+    if ($mail->Username !== '') {
+        $mail->setFrom($mail->Username, $_ENV['EMAIL_FROM_NAME'] ?? 'MI EMPRESA');
+    }
     $mail->addAddress($email);
     $mail->Subject = 'Realiza tu pago por SPEI';
     $mail->CharSet = 'UTF-8';

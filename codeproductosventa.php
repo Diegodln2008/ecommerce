@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/security.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -6,6 +7,11 @@ require 'dbcon.php';
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
+
+if (isset($_POST['delete']) || isset($_POST['deletemedio']) || isset($_POST['update']) || isset($_POST['save'])) {
+    requireUserRole([1, 2]);
+    requireValidCsrfToken();
+}
 
 if (isset($_POST['delete'])) {
     $id = mysqli_real_escape_string($con, $_POST['delete']);

@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/security.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -8,6 +9,18 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 require_once __DIR__ . '/vendor/autoload.php';
+
+if (isset($_POST['delete']) || isset($_POST['save'])) {
+    requireUserRole([1]);
+    requireValidCsrfToken();
+} elseif (isset($_POST['update'])) {
+    requireUserRole([1, 2]);
+    requireValidCsrfToken();
+    if ((int)$_SESSION['user_role'] === 2 && (int)($_POST['id'] ?? 0) !== (int)($_SESSION['user_id'] ?? 0)) {
+        http_response_code(403);
+        exit('Acceso denegado.');
+    }
+}
 
 if (isset($_POST['delete'])) {
     $registro_id = mysqli_real_escape_string($con, $_POST['delete']);
@@ -42,7 +55,9 @@ if (isset($_POST['update'])) {
     $apellidomaterno = mysqli_real_escape_string($con, $_POST['apellidomaterno']);
     $username = mysqli_real_escape_string($con, $_POST['username']);
     $password = $_POST['password']; // NO escapar todavía
-    $rol = mysqli_real_escape_string($con, $_POST['rol']);
+    $rol = (int)$_SESSION['user_role'] === 1
+        ? mysqli_real_escape_string($con, $_POST['rol'])
+        : (string)$_SESSION['user_role'];
     $estatus = mysqli_real_escape_string($con, $_POST['estatus']);
 
     // Base del update
@@ -58,7 +73,11 @@ if (isset($_POST['update'])) {
 
     // 👉 Solo si el password NO está vacío
     if (!empty($password)) {
-        $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+        if (!passwordMeetsPolicy($password)) {
+            http_response_code(400);
+            exit('La contraseña requiere 8 caracteres, minúscula, mayúscula y número.');
+        }
+        $hashed_password = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
         $query .= ", password = '$hashed_password'";
     }
 
@@ -92,15 +111,25 @@ if (isset($_POST['save'])) {
     $apellidopaterno = mysqli_real_escape_string($con, $_POST['apellidopaterno']);
     $apellidomaterno = mysqli_real_escape_string($con, $_POST['apellidomaterno']);
     $email = mysqli_real_escape_string($con, $_POST['username']);
-    $password = mysqli_real_escape_string($con, $_POST['password']);
+    $password = $_POST['password'] ?? '';
     $rol = mysqli_real_escape_string($con, $_POST['rol']);
     $estatus = "1";
+
+    if (!in_array($rol, ['1', '2', '3'], true)) {
+        http_response_code(400);
+        exit('Rol no válido.');
+    }
+
+    if (!passwordMeetsPolicy($password)) {
+        http_response_code(400);
+        exit('La contraseña requiere 8 caracteres, minúscula, mayúscula y número.');
+    }
 
     // Verificar el rol y asignar el nombre correspondiente
     if ($rol == 1) {
         $rol_nombre = "Administrador";
     } elseif ($rol == 2) {
-        $rol_nombre = "Colaborador";
+        $rol_nombre = "Vendedor";
     } else {
         $rol_nombre = "Otro"; // Por si acaso el rol no es 1 ni 2
     }
@@ -117,7 +146,7 @@ if (isset($_POST['save'])) {
         header("Location: usuarios.php");
         exit(0);
     } else {
-        $hashed_password = password_hash($password, PASSWORD_DEFAULT);
+        $hashed_password = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
 
         $query = "INSERT INTO usuarios SET nombre='$nombre', apellidopaterno='$apellidopaterno', apellidomaterno='$apellidomaterno', username='$email', password='$hashed_password', rol='$rol', estatus='$estatus'";
 
@@ -125,11 +154,11 @@ if (isset($_POST['save'])) {
         if ($query_run) {
 
             // Configuracion SMTP
-            $host = 'mail.midominio.mx';
-            $port = 465;
-            $username = 'no-reply@midominio.mx';
-            $password = '=@dH6m7%MEa,';
-            $security = 'ssl';
+            $host = $_ENV['SMTP_HOST'] ?? '';
+            $port = (int)($_ENV['SMTP_PORT'] ?? 587);
+            $username = $_ENV['EMAIL_SMTP'] ?? '';
+            $smtpPassword = $_ENV['PASSWORD_SMTP'] ?? '';
+            $security = $port === 465 ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
 
 
             // Crear instancia PHPMailer
@@ -141,14 +170,16 @@ if (isset($_POST['save'])) {
             $mail->Port = $port;
             $mail->SMTPAuth = true;
             $mail->Username = $username;
-            $mail->Password = $password;
+            $mail->Password = $smtpPassword;
             $mail->SMTPSecure = $security;
             // $mail->SMTPDebug = 2;
             // $mail->Debugoutput = 'error_log';
 
 
             // Configurar correo
-            $mail->setFrom('no-reply@midominio.mx', 'Mi Empresa');
+            if ($username !== '') {
+                $mail->setFrom($username, $_ENV['EMAIL_FROM_NAME'] ?? 'Mi Empresa');
+            }
             // $mail->addReplyTo($email, $nombreuser);
             $mail->addAddress($email);
             $mail->Subject = 'NUEVO USUARIO';
@@ -183,7 +214,6 @@ if (isset($_POST['save'])) {
                         </div>
                         
                         <p><b>Correo:</b> ' . $email . '</p>
-                        <p><b>Contraseña:</b> ' . $password . '</p>
                         <p><b>Rol:</b> ' . $rol_nombre . '</p>
                         </div>
 

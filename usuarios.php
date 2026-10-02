@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/security.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -38,6 +39,10 @@ if (isset($_SESSION['username'])) {
         if (!isset($_SESSION['user_role'])) {
             $_SESSION['user_role'] = $rolSesion;
         }
+        if ($rolSesion !== 1) {
+            http_response_code(403);
+            exit('Acceso denegado.');
+        }
     } else {
         $_SESSION['alert'] = [
             'title' => 'USUARIO NO ENCONTRADO',
@@ -57,6 +62,7 @@ if (isset($_SESSION['username'])) {
 }
 
 $pageTitle = 'Usuarios | Mi Empresa';
+$bodyClass = 'sb-nav-fixed';
 $additionalStyles = [
     'https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css',
     'https://cdn.datatables.net/1.10.25/css/jquery.dataTables.css',
@@ -70,9 +76,9 @@ $footerInlineScript = "$(document).ready(function() { $('#miTabla').DataTable({ 
 $additionalInline = $alertScript;
 
 require __DIR__ . '/templates/header.php';
+include __DIR__ . '/sidenav.php';
 ?>
     <div class="container-fluid">
-        <div id="layoutSidenav">
         <div id="layoutSidenav_content">
             <div class="container-fluid">
                 <div class="row mb-5 mt-4">
@@ -118,7 +124,7 @@ require __DIR__ . '/templates/header.php';
                                                             if ($registro['rol'] === '1') {
                                                                 echo "Administrador/a";
                                                             } else if ($registro['rol'] === '2') {
-                                                                echo "Colaborador/a";
+                                                                echo "Vendedor/a";
                                                             } else if ($registro['rol'] === '3') {
                                                                 echo "Cliente/a";
                                                             } else {
@@ -159,6 +165,7 @@ require __DIR__ . '/templates/header.php';
                                                         if ($rolSesion == 1 && $registro['id'] != 1) {
                                                         ?>
                                                             <form action="codeusuarios.php" method="POST" class="d-inline">
+                                                                <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
                                                                 <button type="submit" name="delete" value="<?= $registro['id']; ?>" class="btn btn-danger btn-sm m-1">
                                                                     <i class="bi bi-trash-fill"></i>
                                                                 </button>
@@ -195,6 +202,7 @@ require __DIR__ . '/templates/header.php';
                 </div>
                 <div class="modal-body">
                     <form action="codeusuarios.php" method="POST" class="row">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
 
                         <div class="col-12 col-md-12 form-floating mb-3">
                             <input type="text" class="form-control" name="nombre" id="nombre" placeholder="Nombre" autocomplete="off" required>
@@ -217,7 +225,7 @@ require __DIR__ . '/templates/header.php';
                         </div>
 
                         <div class="col-12 col-md-7 form-floating mb-3">
-                            <input type="password" class="form-control" name="password" id="password" placeholder="Contraseña" autocomplete="off" minlength="8" required>
+                            <input type="password" class="form-control" name="password" id="password" placeholder="Contraseña" autocomplete="new-password" minlength="8" pattern="(?=.*[a-z])(?=.*[A-Z])(?=.*[0-9]).{8,}" title="Mínimo 8 caracteres, con minúscula, mayúscula y número" required>
                             <label for="password">Contraseña</label>
                         </div>
 
@@ -239,4 +247,14 @@ require __DIR__ . '/templates/header.php';
         </div>
     </div>
 
+<script>
+    const adminPasswordInput = document.getElementById('password');
+    if (adminPasswordInput) {
+        adminPasswordInput.addEventListener('input', () => {
+            const value = adminPasswordInput.value;
+            const valid = value.length >= 8 && /[a-z]/.test(value) && /[A-Z]/.test(value) && /[0-9]/.test(value);
+            adminPasswordInput.setCustomValidity(valid ? '' : 'Usa al menos 8 caracteres, una minúscula, una mayúscula y un número.');
+        });
+    }
+</script>
 <?php require __DIR__ . '/templates/footer.php'; ?>

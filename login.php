@@ -1,11 +1,12 @@
 <?php
 $pageTitle = 'Login | Ecommerce';
+require_once __DIR__ . '/includes/security.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 if (isset($_SESSION['username'])) {
-    header('Location: usuarios.php');
+    header('Location: ' . authenticatedHomePath());
     exit();
 }
 
@@ -27,6 +28,7 @@ require __DIR__ . '/templates/header.php';
         <?php endif; ?>
 
         <form action="authenticate.php?action=login" method="POST" autocomplete="off">
+            <input type="hidden" name="csrf_token" value="<?php echo htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
             <div class="mb-3">
                 <label for="email" class="form-label">Correo electrónico</label>
                 <input type="email" class="form-control" id="email" name="email" placeholder="correo@ejemplo.com" required>

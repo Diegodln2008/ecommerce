@@ -1,9 +1,11 @@
 <?php
+require_once __DIR__ . '/includes/security.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 require_once __DIR__ . '/dbcon.php';
+require_once __DIR__ . '/includes/data-protection.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
@@ -61,8 +63,11 @@ function send_system_email(string $to, string $toName, string $subject, string $
 }
 
 if ($action === 'login') {
-    $email = trim($_POST['email'] ?? '');
+    requireValidCsrfToken();
+    $emailInput = $_POST['email'] ?? '';
     $password = $_POST['password'] ?? '';
+    $email = is_string($emailInput) ? strtolower(trim($emailInput)) : '';
+    $password = is_string($password) ? $password : '';
 
     if ($email === '' || $password === '') {
         $_SESSION['alert'] = [
@@ -77,7 +82,31 @@ if ($action === 'login') {
     $stmt->execute([$email]);
     $user = $stmt->fetch();
 
-    if ($user && password_verify($password, $user['password'])) {
+    if (isLoginLocked($pdo, $email)) {
+        $_SESSION['alert'] = [
+            'type' => 'danger',
+            'message' => 'Cuenta temporalmente bloqueada. Intenta de nuevo en 5 minutos.'
+        ];
+        header('Location: login.php');
+        exit();
+    }
+
+    $storedPassword = (string)($user['password'] ?? '');
+    $passwordIsValid = $user && password_verify($password, $storedPassword);
+    $isLegacyPassword = $user && !$passwordIsValid && (
+        hash_equals($storedPassword, md5($password)) || hash_equals($storedPassword, $password)
+    );
+
+    if ($user && ($passwordIsValid || $isLegacyPassword)) {
+        clearLoginAttempts($pdo, $email);
+
+        if ($isLegacyPassword || password_needs_rehash($storedPassword, PASSWORD_BCRYPT, ['cost' => 12])) {
+            $newHash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
+            $updatePassword = $pdo->prepare('UPDATE usuarios SET password = ? WHERE id = ?');
+            $updatePassword->execute([$newHash, $user['id']]);
+        }
+
+        session_regenerate_id(true);
         $_SESSION['username'] = $user['username'];
         $_SESSION['user_id'] = $user['id'];
         $_SESSION['user_name'] = $user['nombre'];
@@ -95,8 +124,12 @@ if ($action === 'login') {
             error_log('Login email not sent to ' . $user['username']);
         }
 
-        header('Location: usuarios.php');
+        header('Location: ' . authenticatedHomePath());
         exit();
+    }
+
+    if ($user) {
+        recordFailedLogin($pdo, $email);
     }
 
     $_SESSION['alert'] = [
@@ -108,14 +141,16 @@ if ($action === 'login') {
 }
 
 if ($action === 'register') {
+    requireValidCsrfToken();
     $nombre = trim($_POST['nombre'] ?? '');
     $apellidopaterno = trim($_POST['apellidopaterno'] ?? '');
     $apellidomaterno = trim($_POST['apellidomaterno'] ?? '');
     $email = trim($_POST['email'] ?? '');
     $password = $_POST['password'] ?? '';
     $confirm_password = $_POST['confirm_password'] ?? '';
+    $acceptPolicy = ($_POST['accept_policy'] ?? '') === '1';
 
-    if ($nombre === '' || $apellidopaterno === '' || $email === '' || $password === '' || $confirm_password === '') {
+    if ($nombre === '' || $apellidopaterno === '' || $email === '' || $password === '' || $confirm_password === '' || !$acceptPolicy) {
         $_SESSION['alert'] = [
             'type' => 'warning',
             'message' => 'Completa todos los campos.'
@@ -133,10 +168,10 @@ if ($action === 'register') {
         exit();
     }
 
-    if (strlen($password) < 8) {
+    if (!passwordMeetsPolicy($password)) {
         $_SESSION['alert'] = [
             'type' => 'warning',
-            'message' => 'La contraseña debe tener al menos 8 caracteres.'
+            'message' => 'Usa al menos 8 caracteres, una minúscula, una mayúscula y un número.'
         ];
         header('Location: register.php');
         exit();
@@ -153,7 +188,7 @@ if ($action === 'register') {
         exit();
     }
 
-    $hash = password_hash($password, PASSWORD_DEFAULT);
+    $hash = password_hash($password, PASSWORD_BCRYPT, ['cost' => 12]);
     $rol = 3;
     $estatus = 1;
 

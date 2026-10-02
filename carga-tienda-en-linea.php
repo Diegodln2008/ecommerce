@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/security.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -52,6 +53,11 @@ if (isset($_SESSION['username'])) {
     header('Location: login.php');
     exit();
 }
+
+if (!in_array((int)($_SESSION['user_role'] ?? 0), [1, 2], true)) {
+    http_response_code(403);
+    exit('Acceso denegado.');
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -71,7 +77,6 @@ if (isset($_SESSION['username'])) {
 
 <body class="sb-nav-fixed">
     <?php include 'sidenav.php'; ?>
-    <div id="layoutSidenav">
         <div id="layoutSidenav_content">
             <div class="container-fluid">
                 <div class="row mb-5 mt-4">
@@ -146,6 +151,7 @@ if (isset($_SESSION['username'])) {
                                                         <a href="duplicar-producto-venta.php?id=<?= $registro['id']; ?>" class="btn btn-secondary btn-sm m-1"><i class="bi bi-copy"></i></a>
 
                                                         <form action="codeproductosventa.php" method="POST" class="d-inline">
+                                                            <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
                                                             <button type="submit" name="delete" value="<?= $registro['id']; ?>" class="btn btn-danger btn-sm m-1"><i class="bi bi-trash-fill"></i></button>
                                                         </form>
                                                     </td>
@@ -177,6 +183,7 @@ if (isset($_SESSION['username'])) {
                 </div>
                 <div class="modal-body">
                     <form action="codeproductosventa.php" method="POST" class="row" enctype="multipart/form-data">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
                         <div class="col-12 col-md-12 form-floating mb-3">
                             <input type="text" class="form-control" name="titulo" id="titulo" placeholder="Titulo" autocomplete="off" required>
                             <label for="titulo">Título</label>
@@ -336,6 +343,7 @@ if (isset($_SESSION['username'])) {
                     <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
                 </div>
                 <form action="codeproductosventa.php" method="POST">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
                     <div class="modal-body">
                         <div class="col-12 col-md-12 mb-3">
                             <p class="mb-1"><b>Selecciona el producto al que le quieres agregar tallas</small></b></p>

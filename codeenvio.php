@@ -1,15 +1,19 @@
 <?php
+require_once __DIR__ . '/includes/security.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 
 require_once __DIR__ . '/vendor/autoload.php';
 require_once __DIR__ . '/dbcon.php';
+require_once __DIR__ . '/includes/data-protection.php';
 
 use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 if (isset($_POST['finalizar'])) {
+    requireUserRole([1, 2]);
+    requireValidCsrfToken();
 
     $identificador = mysqli_real_escape_string($con, $_POST['identificador']);
     $guia = mysqli_real_escape_string($con, $_POST['guia']);
@@ -30,6 +34,7 @@ if (isset($_POST['finalizar'])) {
         }
 
         $pedido = mysqli_fetch_assoc($resultPedido);
+        $pedido = decryptOrderPersonalData($pedido);
 
         $nombre       = $pedido['nombre'];
         $apellidop    = $pedido['apellidop'];
@@ -47,11 +52,11 @@ if (isset($_POST['finalizar'])) {
         $total        = (float)$pedido['total'];
 
         // Configuracion SMTP
-        $host = 'mail.dominio.mx';
-        $port = 465;
-        $username = 'no-reply@dominio.mx';
-        $password = '=@dH6mqA5H7%MEa,';
-        $security = 'ssl';
+        $host = $_ENV['SMTP_HOST'] ?? '';
+        $port = (int)($_ENV['SMTP_PORT'] ?? 587);
+        $username = $_ENV['EMAIL_SMTP'] ?? '';
+        $smtpPassword = $_ENV['PASSWORD_SMTP'] ?? '';
+        $security = $port === 465 ? PHPMailer::ENCRYPTION_SMTPS : PHPMailer::ENCRYPTION_STARTTLS;
 
 
         $mail = new PHPMailer(true);
@@ -61,13 +66,15 @@ if (isset($_POST['finalizar'])) {
         $mail->Port = $port;
         $mail->SMTPAuth = true;
         $mail->Username = $username;
-        $mail->Password = $password;
+        $mail->Password = $smtpPassword;
         $mail->SMTPSecure = $security;
         // $mail->SMTPDebug = 2;
         // $mail->Debugoutput = 'error_log';
 
 
-        $mail->setFrom('no-reply@dominio.mx', 'MI EMPRESA');
+        if ($username !== '') {
+            $mail->setFrom($username, $_ENV['EMAIL_FROM_NAME'] ?? 'MI EMPRESA');
+        }
         // $mail->addReplyTo($email, $nombreuser);
         $mail->addAddress($email);
         $mail->Subject = 'PEDIDO' . ' ' . $identificador;
@@ -256,6 +263,26 @@ if (isset($_POST['finalizar'])) {
 
 
 if (isset($_POST['save'])) {
+    requireValidCsrfToken();
+
+    if (($_POST['accept_policy'] ?? '') !== '1') {
+        $_SESSION['alert'] = [
+            'title' => 'CONFIRMA LOS TÉRMINOS',
+            'message' => 'Lee el aviso de privacidad y acepta los términos para continuar.',
+            'icon' => 'warning'
+        ];
+        header('Location: pedido.php');
+        exit;
+    }
+
+    try {
+        assertOrderPersonalDataReady($pdo);
+    } catch (Throwable $e) {
+        error_log('Order data protection is not ready: ' . $e->getMessage());
+        $_SESSION['order_error'] = 'No es posible guardar el pedido de forma segura en este momento. Intenta más tarde o contacta a soporte.';
+        header('Location: pedido.php');
+        exit;
+    }
 
     mysqli_begin_transaction($con);
 
@@ -280,15 +307,15 @@ if (isset($_POST['save'])) {
             $con,
             strtolower(trim($_POST['email']))
         );
-        $telefono   = mysqli_real_escape_string($con, $_POST['telefono']);
-        $calle      = mysqli_real_escape_string($con, $_POST['calle']);
-        $exterior   = mysqli_real_escape_string($con, $_POST['exterior']);
-        $interior   = mysqli_real_escape_string($con, $_POST['interior']);
-        $colonia    = mysqli_real_escape_string($con, $_POST['colonia']);
-        $ciudad     = mysqli_real_escape_string($con, $_POST['ciudad']);
-        $estado     = mysqli_real_escape_string($con, $_POST['estado']);
-        $postal     = mysqli_real_escape_string($con, $_POST['postal']);
-        $pais       = mysqli_real_escape_string($con, $_POST['pais']);
+        $telefono   = mysqli_real_escape_string($con, encryptPersonalData($_POST['telefono']));
+        $calle      = mysqli_real_escape_string($con, encryptPersonalData($_POST['calle']));
+        $exterior   = mysqli_real_escape_string($con, encryptPersonalData($_POST['exterior']));
+        $interior   = mysqli_real_escape_string($con, encryptPersonalData($_POST['interior']));
+        $colonia    = mysqli_real_escape_string($con, encryptPersonalData($_POST['colonia']));
+        $ciudad     = mysqli_real_escape_string($con, encryptPersonalData($_POST['ciudad']));
+        $estado     = mysqli_real_escape_string($con, encryptPersonalData($_POST['estado']));
+        $postal     = mysqli_real_escape_string($con, encryptPersonalData($_POST['postal']));
+        $pais       = mysqli_real_escape_string($con, encryptPersonalData($_POST['pais']));
         $cupon      = mysqli_real_escape_string($con, $_POST['cuponLS']);
 
         $productos = json_decode($_POST['cartLS'], true);

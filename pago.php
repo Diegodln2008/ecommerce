@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/security.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -10,6 +11,7 @@ require 'vendor/autoload.php';
 $dotenv = Dotenv\Dotenv::createImmutable(__DIR__);
 $dotenv->load();
 require 'dbcon.php';
+require_once __DIR__ . '/includes/data-protection.php';
 
 $openpayId = getenv('OPENPAY_ID') ?: ($_ENV['OPENPAY_ID'] ?? '');
 $openpayPublicKey = getenv('OPENPAY_PK') ?: ($_ENV['OPENPAY_PK'] ?? '');
@@ -76,6 +78,7 @@ while ($field = $meta->fetch_field()) {
 
 call_user_func_array([$stmt, 'bind_result'], $fields);
 $stmt->fetch();
+$pedido = decryptOrderPersonalData($pedido);
 
 if (
     isset($pedido['status_pago']) &&
@@ -272,6 +275,7 @@ while ($stmtVentas->fetch()) {
             <div class="col-11 col-md-7 mt-5 mb-5 p-5 order-1">
                 <h2>PASO 3: PAGO</h2>
                 <form action="codepago.php" method="POST" id="payment-form" class="row justify-content-center">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
                     <input type="hidden" name="identificador" value="<?= htmlspecialchars($pedido['identificador'], ENT_QUOTES, 'UTF-8'); ?>">
                     <input type="hidden" name="token_id" id="token_id">
                     <input type="hidden" name="use_card_points" id="use_card_points" value="false">

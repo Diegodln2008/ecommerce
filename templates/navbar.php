@@ -1,14 +1,15 @@
 <?php
+require_once __DIR__ . '/../includes/security.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
 $username = $_SESSION['username'] ?? 'Invitado';
 $userRole = $_SESSION['user_role'] ?? '3';
-$roleLabel = $userRole === '1' ? 'Administrador/a' : ($userRole === '2' ? 'Colaborador/a' : 'Cliente/a');
+$roleLabel = $userRole === '1' ? 'Administrador/a' : ($userRole === '2' ? 'Vendedor/a' : 'Cliente/a');
 ?>
 <nav class="navbar navbar-expand-lg navbar-dark bg-primary mb-3">
     <div class="container-fluid">
-        <a class="navbar-brand" href="usuarios.php">Mi Empresa</a>
+        <a class="navbar-brand" href="<?php echo htmlspecialchars(authenticatedHomePath(), ENT_QUOTES, 'UTF-8'); ?>">Mi Empresa</a>
         <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarSupportedContent" aria-controls="navbarSupportedContent" aria-expanded="false" aria-label="Alternar navegación">
             <span class="navbar-toggler-icon"></span>
         </button>

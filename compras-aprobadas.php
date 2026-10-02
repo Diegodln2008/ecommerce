@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/security.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -52,6 +53,11 @@ if (isset($_SESSION['username'])) {
     header('Location: login.php');
     exit();
 }
+
+if (!in_array((int)($_SESSION['user_role'] ?? 0), [1, 2], true)) {
+    http_response_code(403);
+    exit('Acceso denegado.');
+}
 ?>
 <!DOCTYPE html>
 <html lang="en">
@@ -71,7 +77,6 @@ if (isset($_SESSION['username'])) {
 
 <body class="sb-nav-fixed">
     <?php include 'sidenav.php'; ?>
-    <div id="layoutSidenav">
         <div id="layoutSidenav_content">
             <div class="container-fluid">
                 <div class="row mb-5 mt-4">
@@ -100,6 +105,7 @@ if (isset($_SESSION['username'])) {
                                         $query_run = mysqli_query($con, $query);
                                         if (mysqli_num_rows($query_run) > 0) {
                                             foreach ($query_run as $registro) {
+                                                $registro = decryptOrderPersonalData($registro);
                                                 $identificador = $registro['identificador'];
                                         ?>
                                                 <tr>
@@ -210,6 +216,7 @@ if (isset($_SESSION['username'])) {
 
                 <div class="modal-body">
                     <form action="codeenvio.php" method="POST">
+                        <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
 
                         <!-- Identificador visible -->
                         <div class="form-floating mb-3">

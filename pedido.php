@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/security.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -135,7 +136,13 @@ if (!empty($alert)) {
         <div class="row mt-5 justify-content-center">
             <div class="col-12 col-md-8 mt-5 p-5">
                 <h2>PASO 2: INFORMACIÓN PARA ENVÍO</h2>
+                <?php if (!empty($_SESSION['order_error'])): ?>
+                    <div class="alert alert-warning" role="alert">
+                        <?= htmlspecialchars($_SESSION['order_error'], ENT_QUOTES, 'UTF-8'); unset($_SESSION['order_error']); ?>
+                    </div>
+                <?php endif; ?>
                 <form action="codeenvio.php" method="post" class="row mt-4">
+                    <input type="hidden" name="csrf_token" value="<?= htmlspecialchars(csrfToken(), ENT_QUOTES, 'UTF-8'); ?>">
                     <input type="hidden" name="cuponLS" id="cuponLS">
                     <input type="hidden" name="cartLS" id="cartLS">
                     <div class="form-floating col-12">
@@ -237,7 +244,11 @@ if (!empty($alert)) {
                         </div>
                     </div>
 
-                    <div class="col-12"><button class="btn btn-danger w-100" id="btnGuardar" name="save" type="submit" disabled>Ir a pagar</button></div>
+                    <div class="col-12 form-check mt-3">
+                        <input class="form-check-input" type="checkbox" value="1" id="accept_policy" name="accept_policy" required>
+                        <label class="form-check-label" for="accept_policy">Acepto los <a href="terminos-condiciones.php" target="_blank" rel="noopener">Términos y condiciones</a> y he leído el <a href="aviso-privacidad.php" target="_blank" rel="noopener">Aviso de privacidad</a>.</label>
+                    </div>
+                    <div class="col-12 mt-3"><button class="btn btn-danger w-100" id="btnGuardar" name="save" type="submit" disabled>Ir a pagar</button></div>
                 </form>
             </div>
         </div>

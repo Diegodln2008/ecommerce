@@ -1,8 +1,13 @@
+<?php
+$isLoggedIn = !empty($_SESSION['username']);
+$menuRole = (int)($_SESSION['user_role'] ?? 3);
+$menuRoleLabel = $menuRole === 1 ? 'Administrador' : ($menuRole === 2 ? 'Vendedor' : 'Cliente');
+?>
 <link rel="stylesheet" href="css/menu.css">
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/all.min.css">
 <nav class="navbar navbar-expand-md navbar-light fixed-top" style="z-index:99;">
   <div class="container-fluid containernav" style="margin: 0px 45px;">
-    <a class="navbar-brand" href="#">
+    <a class="navbar-brand" href="tienda-en-linea.php">
       <div class="row justify-content-center align-items-center">
         <img src="images/logo.png" class="h-8 logomenu" alt="Logo">
       </div>
@@ -20,9 +25,17 @@
         <div class="navbar-nav ms-auto menucanvass">
           <p>Aqui va una descripcion para la versión movíl</p>
           <hr>
-          <a class="nav-item nav-link" href="login.php">Intranet</a>
           <a class="nav-item nav-link" href="tienda-en-linea.php">Tienda en línea</a>
           <a class="nav-item nav-link" href="carrito-de-compras.php"><i class="fas fa-shopping-cart"></i></a>
+          <?php if ($isLoggedIn): ?>
+            <span class="nav-item nav-link text-dark"><?php echo htmlspecialchars($_SESSION['user_name'] ?? $_SESSION['username'], ENT_QUOTES, 'UTF-8'); ?> · <?php echo htmlspecialchars($menuRoleLabel, ENT_QUOTES, 'UTF-8'); ?></span>
+            <?php if (in_array($menuRole, [1, 2], true)): ?>
+              <a class="nav-item nav-link" href="<?php echo htmlspecialchars(authenticatedHomePath(), ENT_QUOTES, 'UTF-8'); ?>">Volver al panel</a>
+            <?php endif; ?>
+            <a class="nav-item nav-link" href="logout.php">Cerrar sesión</a>
+          <?php else: ?>
+            <a class="nav-item nav-link" href="login.php">Intranet</a>
+          <?php endif; ?>
         </div>
       </div>
     </div>

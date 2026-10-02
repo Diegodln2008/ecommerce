@@ -1,4 +1,5 @@
 <?php
+require_once __DIR__ . '/includes/security.php';
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
 }
@@ -113,6 +114,16 @@ $comisionFactor = (float)$comisionValor / 100; // Ej: 0.03
             localStorage.setItem("empresaCart", JSON.stringify(cart));
         }
 
+        function escapeHtml(value) {
+            return String(value ?? "").replace(/[&<>"']/g, character => ({
+                "&": "&amp;",
+                "<": "&lt;",
+                ">": "&gt;",
+                '"': "&quot;",
+                "'": "&#39;"
+            }[character]));
+        }
+
         // Agregar producto
         function addCart(id) {
             let cart = getCart();
@@ -207,8 +218,8 @@ $comisionFactor = (float)$comisionValor / 100; // Ej: 0.03
                 const totalFila = (precioConComision - descuentoAplicable) * item.cantidad;
                 detalle += `
     <tr>
-        <td>${item.cantidad}</td>
-        <td style="width: 50%;">${titulo}</td>
+        <td>${escapeHtml(item.cantidad)}</td>
+        <td style="width: 50%;">${escapeHtml(titulo)}</td>
         <td>$ ${totalFila.toFixed(2)}</td>
     </tr>`;
             });
@@ -336,31 +347,34 @@ $comisionFactor = (float)$comisionValor / 100; // Ej: 0.03
 
                 let html = "";
                 data.forEach(prod => {
+                    const productId = Number.parseInt(prod.productoID, 10);
+                    const title = escapeHtml(prod.titulo);
+                    const imageUrl = escapeHtml(prod.primer_medio || 'images/ico.ico');
                     html += `
-<div class="col-12 mt-3" id="card-${prod.productoID}">
+<div class="col-12 mt-3" id="card-${productId}">
     <div class="card" style="width: 100%;">
         <div class="row g-0">
             <div class="col-5 col-md-4">
                 <div style="height: 160px; overflow: hidden;">
-                    <a href="ver-producto.php?id=${prod.productoID}">
-                        <img src="${prod.primer_medio || 'images/ico.ico'}" class="img-fluid rounded-start" style="width: 100%; height: 100%; object-fit: cover;">
+                    <a href="ver-producto.php?id=${productId}">
+                        <img src="${imageUrl}" class="img-fluid rounded-start" style="width: 100%; height: 100%; object-fit: cover;">
                     </a>
                 </div>
             </div>
             <div class="col-7 col-md-8">
                 <div class="card-body card-buy">
-                    <h5 id="title-${prod.productoID}" class="card-title" style="text-transform: uppercase; font-weight: 600;">${prod.titulo}</h5>
+                    <h5 id="title-${productId}" class="card-title" style="text-transform: uppercase; font-weight: 600;">${title}</h5>
                     <div class="ms-2 align-items-center">
-                        <p id="price-${prod.productoID}" 
+                        <p id="price-${productId}" 
                            data-precio="${prod.preciounitario}" 
                            data-mayoreo="${prod.preciomayoreo}" 
                            data-minmayoreo="${prod.cantidadmayoreo}"
                            data-descuento="${prod.descuento}">
                            Cargando precio...
                         </p>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="changeQuantity('${prod.productoID}', -1)">−</button>
-                        <span id="qty-${prod.productoID}" class="mx-2">0</span>
-                        <button class="btn btn-sm btn-outline-secondary" onclick="changeQuantity('${prod.productoID}', 1)">+</button>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="changeQuantity('${productId}', -1)">−</button>
+                        <span id="qty-${productId}" class="mx-2">0</span>
+                        <button class="btn btn-sm btn-outline-secondary" onclick="changeQuantity('${productId}', 1)">+</button>
                     </div>
                 </div>
             </div>

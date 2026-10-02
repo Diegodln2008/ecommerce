@@ -1,14 +1,14 @@
 <?php
 require 'dbcon.php';
 $username = $_SESSION['username'];
+$userRole = (int)($_SESSION['user_role'] ?? 0);
 ?>
 <link rel="stylesheet" href="css/sidenav.css">
 <script src="https://use.fontawesome.com/releases/v6.1.0/js/all.js" crossorigin="anonymous"></script>
 
-<body class="sb-nav-fixed">
     <nav class="sb-topnav navbar navbar-expand navbar-dark bg-dark">
         <!-- Navbar Brand-->
-        <a class="navbar-brand ps-3" href="dashboard.php"><img style="width: 180px;" src="images/logo.png" alt=""></a>
+        <a class="navbar-brand ps-3" href="<?php echo htmlspecialchars(authenticatedHomePath(), ENT_QUOTES, 'UTF-8'); ?>"><img style="width: 180px;" src="images/logo.png" alt=""></a>
         <!-- Sidebar Toggle-->
         <button class="btn btn-link btn-sm order-1 order-lg-0 me-4 me-lg-0" id="sidebarToggle" href="#!"><i class="fas fa-bars"></i></button>
 
@@ -24,79 +24,56 @@ $username = $_SESSION['username'];
                 <div class="sb-sidenav-menu">
                     <div class="nav">
                         <div class="sb-sidenav-menu-heading">Principal</div>
-                        <a class="nav-link" href="dashboard.php">
+                        <a class="nav-link" href="<?php echo htmlspecialchars(authenticatedHomePath(), ENT_QUOTES, 'UTF-8'); ?>">
                             <div class="sb-nav-link-icon"><i class="fas fa-tachometer-alt"></i></div>
-                            Dashboard
+                            Inicio
                         </a>
-                        <a class="nav-link" href="configuraciones.php">
-                            <div class="sb-nav-link-icon"><i class="bi bi-gear-wide-connected"></i></div>
-                            Configuraciones
-                        </a>
-                        <a class="nav-link" href="usuarios.php">
-                            <div class="sb-nav-link-icon"><i class="bi bi-person-fill"></i></div>
-                            Usuarios
-                        </a>
-                        <a class="nav-link" href="marketing.php">
-                            <div class="sb-nav-link-icon"><i class="bi bi-send-fill"></i></div>
-                            Marketing
-                        </a>
-                        <a class="nav-link" href="estadisticas.php">
-                            <div class="sb-nav-link-icon"><i class="fas fa-chart-area"></i></div>
-                            Estadísticas
-                        </a>
-                        <div class="sb-sidenav-menu-heading">Modulos</div>
-                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayouts" aria-expanded="false" aria-controls="collapseLayouts">
-                            <div class="sb-nav-link-icon"><i class="fas fa-columns"></i></div>
-                            Catálogos
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayouts" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                <a class="nav-link" href="vigentes.php">Productos activos</a>
-                                <a class="nav-link" href="historicos.php">Productos inactivos</a>
-                                <a class="nav-link" href="misvideos.php">Videos</a>
-                                <a class="nav-link" href="miscatalogos.php">Catálogos</a>
-                            </nav>
-                        </div>
-                        <a class="nav-link collapsed" href="#" data-bs-toggle="collapse" data-bs-target="#collapseLayoutsLinea" aria-expanded="false" aria-controls="collapseLayoutsLinea">
-                            <div class="sb-nav-link-icon"><i class="bi bi-cart"></i></div>
-                            Tienda en línea
-                            <div class="sb-sidenav-collapse-arrow"><i class="fas fa-angle-down"></i></div>
-                        </a>
-                        <div class="collapse" id="collapseLayoutsLinea" aria-labelledby="headingOne" data-bs-parent="#sidenavAccordion">
-                            <nav class="sb-sidenav-menu-nested nav">
-                                <a class="nav-link" href="compras-aprobadas.php">Compras</a>
-                                <a class="nav-link" href="compras-finalizadas.php">Compras finalizadas</a>
-                                <a class="nav-link" href="carga-tienda-en-linea.php">Productos activos</a>
-                                <a class="nav-link" href="historicos-venta.php">Productos inactivos</a>
-                                <a class="nav-link" href="cupones.php">Cupones</a>
-                                <a class="nav-link" href="promociones.php">Promociones</a>
-                            </nav>
-                        </div>
-                        <!-- <a class="nav-link" href="promociones.php">
-                            <div class="sb-nav-link-icon"><i class="bi bi-cash-coin"></i></div>
-                            Promociones
-                        </a> -->
-                        <!-- <a class="nav-link" href="misvideos.php">
-                            <div class="sb-nav-link-icon"><i class="bi bi-play-btn-fill"></i></div>
-                            Videos
-                        </a> -->
-                        <!-- <a class="nav-link" href="miscatalogos.php">
-                            <div class="sb-nav-link-icon"><i class="bi bi-journal-arrow-down"></i></div>
-                            Catálogos
-                        </a> -->
-                        <div class="sb-sidenav-menu-heading">Panel de control</div>
-                        <a class="nav-link" href="categorias.php">
-                            <div class="sb-nav-link-icon"><i class="bi bi-list"></i></div>
-                            Categorías
-                        </a>
-                        <a class="nav-link" href="subcategorias.php">
-                            <div class="sb-nav-link-icon"><i class="bi bi-list-nested"></i></div>
-                            Subcategorías
-                        </a>
-                        <a class="nav-link" href="industrias.php">
-                            <div class="sb-nav-link-icon"><i class="bi bi-building-fill"></i></div>
-                            Industrias
+                        <?php if ($userRole === 1): ?>
+                            <a class="nav-link" href="usuarios.php">
+                                <div class="sb-nav-link-icon"><i class="bi bi-person-fill"></i></div>
+                                Usuarios
+                            </a>
+                            <span class="sb-sidenav-menu-heading">Administración</span>
+                            <a class="nav-link" href="admin-modulos.php?section=settings">
+                                <span class="sb-nav-link-icon"><i class="bi bi-gear-wide-connected"></i></span>
+                                Configuraciones
+                            </a>
+                            <a class="nav-link" href="admin-modulos.php?section=marketing">
+                                <span class="sb-nav-link-icon"><i class="bi bi-send-fill"></i></span>
+                                Marketing
+                            </a>
+                            <a class="nav-link" href="admin-modulos.php?section=statistics">
+                                <span class="sb-nav-link-icon"><i class="fas fa-chart-area"></i></span>
+                                Estadísticas
+                            </a>
+                            <span class="sb-sidenav-menu-heading">Catálogos</span>
+                            <a class="nav-link" href="admin-modulos.php?section=inactive-products">Productos inactivos</a>
+                            <a class="nav-link" href="admin-modulos.php?section=videos">Videos</a>
+                            <a class="nav-link" href="admin-modulos.php?section=catalogs">Catálogos</a>
+                            <span class="sb-sidenav-menu-heading">Panel de control</span>
+                            <a class="nav-link" href="admin-modulos.php?section=categories">Categorías</a>
+                            <a class="nav-link" href="admin-modulos.php?section=subcategories">Subcategorías</a>
+                            <a class="nav-link" href="admin-modulos.php?section=industries">Industrias</a>
+                        <?php endif; ?>
+                        <?php if (in_array($userRole, [1, 2], true)): ?>
+                            <div class="sb-sidenav-menu-heading">Tienda</div>
+                            <a class="nav-link" href="compras-aprobadas.php">
+                                <div class="sb-nav-link-icon"><i class="bi bi-cart-check"></i></div>
+                                Compras
+                            </a>
+                            <a class="nav-link" href="carga-tienda-en-linea.php">
+                                <div class="sb-nav-link-icon"><i class="bi bi-box-seam"></i></div>
+                                Productos
+                            </a>
+                            <?php if ($userRole === 1): ?>
+                                <a class="nav-link" href="admin-modulos.php?section=finished-orders">Compras finalizadas</a>
+                                <a class="nav-link" href="admin-modulos.php?section=coupons">Cupones</a>
+                                <a class="nav-link" href="admin-modulos.php?section=promotions">Promociones</a>
+                            <?php endif; ?>
+                        <?php endif; ?>
+                        <a class="nav-link" href="tienda-en-linea.php">
+                            <div class="sb-nav-link-icon"><i class="bi bi-shop"></i></div>
+                            Ver tienda
                         </a>
                     </div>
                 </div>
@@ -122,9 +99,5 @@ $username = $_SESSION['username'];
                 </div>
             </nav>
         </div>
-    </div>
-</body>
-
-
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.2.1/jquery.min.js"></script>
 <script src="js/sidenav.js"></script>
